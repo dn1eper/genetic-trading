@@ -2,27 +2,30 @@ import csv
 import os
 import pandas as pd
 
-N_PARAMS = 9
-INPUT_FILE = "Data/bd(TouchLp).csv"
-CONVERTED_FILE_NAME = "Data/converted.csv"
+N_PARAMS = 10
+DATA_FILE = "Data/bd(TouchLp).csv"
+PARAMS_FILE = "Data/params.csv"
+CONVERTED_FILE = "Data/data.csv"
 HEADER_PREFIX = "COLUMN"
 
 def convert():
-    header = [HEADER_PREFIX+str(i) for i in range(N_PARAMS)]
+    header = [HEADER_PREFIX+str(i+1) for i in range(N_PARAMS)]
 
-    write_file = open(CONVERTED_FILE_NAME, 'w', newline='')
-    with open(INPUT_FILE, 'r', newline='') as read_file:
+    write_file = open(CONVERTED_FILE, 'w', newline='')
+    with open(DATA_FILE, 'r', newline='') as read_file:
         reader = csv.reader(read_file, delimiter=";", quotechar="\n")
         writer = csv.writer(write_file, delimiter=',', quotechar='\n', quoting=csv.QUOTE_MINIMAL)
         writer.writerow(header)
         for row in reader:
-            index = row.index("BD") + 1
-            writer.writerow(row[index:index+N_PARAMS])
+            writer.writerow(row[:N_PARAMS])
             
     write_file.close()
 
 
-def load():
-    if not os.path.isfile(CONVERTED_FILE_NAME):
+def load_data():
+    if not os.path.isfile(CONVERTED_FILE):
         convert()
-    return pd.read_csv(CONVERTED_FILE_NAME)
+    return pd.read_csv(CONVERTED_FILE)
+
+def load_params():
+    return pd.read_csv(PARAMS_FILE)

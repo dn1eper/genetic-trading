@@ -8,7 +8,10 @@ class Selector(ABC):
 
 class TopNSelector(Selector):
     def __init__(self, n:int):
-        self._n = n
+        if n > 0:
+            self._n = n
+        else:
+            raise ValueError("n must be greater than 0")
 
     def select(self, gene_chains:list):
         return gene_chains[:self._n]

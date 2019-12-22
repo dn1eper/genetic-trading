@@ -1,5 +1,19 @@
 from gene import GeneChain
-import random
+from Data.main import build_db, evaluate
 
-def fitness(individ:GeneChain) -> int:
-    return random.randint(1, 100)
+class Fitness:
+    def __init__(self):
+        build_db()
+
+    def calc(self, individ:GeneChain) -> float:
+        return evaluate(self._individ_converter(individ))
+
+    def _individ_converter(self, individ:GeneChain) -> list:
+        result = list()
+        for gene in individ:
+            if not gene._interval:
+                result.append(gene.value())
+            else:
+                result.append([gene.min(), gene.max()])
+        
+        return result

@@ -2,11 +2,13 @@ from gene import Gene, GeneChain
 from genetic import Genetic
 from selector import TopNSelector
 from util import print_row, print_header
-from loader import load
+from loader import load_data, load_params
 from crosser import RandomGeneCrosser
+import numpy as np
 
 # Load data
 data = load()
+params = load_params()
 
 # Init base gene chain
 base_gene_chain = GeneChain()
@@ -16,9 +18,15 @@ for column in data:
     max_value = max(data[column])
     base_gene_chain.add(Gene(dtype.type, max_value, min_value, -1))
 
+for index, row in params.iterrows():
+    dtype = np.dtype(row["TYPE"])
+    min_value = dtype.type(row["MIN"])
+    max_value = dtype.type(row["MAX"])
+    base_gene_chain.add(Gene(dtype.type, max_value, min_value, -1))\
+
 # Init genetic algorithm
 genetic = Genetic(
-    max_generations=1,
+    max_generations=20,
     max_individuals=10,
     base_gene_chain=base_gene_chain,
     crosser=RandomGeneCrosser(),
@@ -27,5 +35,5 @@ genetic = Genetic(
 # Run
 genetic.run()
 
-for individ in genetic._individuals:
-    print(individ.score)
+for i, gene in enumerate(genetic.best()):
+    print(i, gene)
