@@ -4,10 +4,11 @@ from selector import TopNSelector
 from util import print_row, print_header
 from loader import load_data, load_params
 from crosser import RandomGeneCrosser
+from mutator import RandomGeneChainMutator
 import numpy as np
 
 # Load data
-data = load()
+data = load_data()
 params = load_params()
 
 # Init base gene chain
@@ -27,10 +28,11 @@ for index, row in params.iterrows():
 # Init genetic algorithm
 genetic = Genetic(
     max_generations=20,
-    max_individuals=10,
+    start_population=10,
     base_gene_chain=base_gene_chain,
     crosser=RandomGeneCrosser(),
-    selector=TopNSelector(3))
+    selector=TopNSelector(3),
+    mutator=RandomGeneChainMutator(10))
 
 # Run
 genetic.run()

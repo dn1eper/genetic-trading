@@ -4,22 +4,29 @@ from gene import GeneChain
 from selector import Selector
 from crosser import Crosser
 from fitness import Fitness
+from mutator import Mutator
 
 class Genetic:
-    def __init__(self, max_generations:int, max_individuals:int, base_gene_chain:GeneChain, crosser:Crosser, selector:Selector, verbose:bool = True):
+    def __init__(self, max_generations:int, start_population:int, 
+        base_gene_chain:GeneChain, crosser:Crosser, selector:Selector, mutator:Mutator, 
+        verbose:bool = True):
+
         self._selector = selector
         self._crosser = crosser
+        self._mutator = mutator
         self._fitness = Fitness()
         self._max_generations = max_generations
         self._verbose = verbose
         # Create random individuals
-        self._individuals = [deepcopy(base_gene_chain) for i in range(max_individuals)]
+        self._individuals = [deepcopy(base_gene_chain) for i in range(start_population)]
         for individ in self._individuals:
             individ.random()
 
     def _next_generation(self):
         # cross individ
         self._individuals = self._crosser.cross(self._individuals)
+        # add mutatation
+        self._individuals += self._mutator.mutate(self._individuals)
         # calculate fitness function for each indidivid
         for individ in self._individuals:
             individ.score = self._fitness.calc(individ)
