@@ -6,7 +6,6 @@ class Effects(ABC):
     def effect(self, gene_chains: list) -> list:
         pass
 
-
 class KolyanEffects(Effects):
     def __init__(self, rep: float):
         self.rep = rep # part of the worst individuals being replaced by the best individuals from the prev generation

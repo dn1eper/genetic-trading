@@ -16,7 +16,8 @@ class RandomGeneCrosser(Crosser):
         for gene_chain in gene_chains:
             for i in range(len(gene_chain)):
                 new_gene_chain = deepcopy(gene_chain)
-                new_gene_chain[i].random()
+                new_gene_chain[i].set_random()
+                new_gene_chain.fitness = None
                 result.append(new_gene_chain)
 
         return result

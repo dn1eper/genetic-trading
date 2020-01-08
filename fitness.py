@@ -13,6 +13,13 @@ class OpenModel:
         self.range_end = range_end
         self.close_time = close_time
 
+class FitnessResult():
+    def __init__(self, result, models, max_drawdown, max_account):
+        self.score = result
+        self.models = models
+        self.max_drawdown = max_drawdown
+        self.max_account = max_account
+
 class Evaluation:
     def __init__(self, spread):
         self._def_db_indivs = load_indivs()
@@ -24,7 +31,7 @@ class Evaluation:
         self._spread = spread
 
     def evaluate(self, individual):
-        # print('entered evaluation.evaluate')
+        #print('entered evaluation.evaluate')
         result = 0
         db_indivs = self._def_db_indivs
         db_results = self._def_db_results
@@ -36,6 +43,8 @@ class Evaluation:
 
         open_models = []  # list with OpenModel objects
         recently_opened_models = Queue(maxsize=10)  # list of model numbers
+        entry_dist, stop, stop_out, take, bu, bu_cond, min_dist_betw_orders, max_stops, exp, min_tim_betw_odrs = \
+                [gene.value() for gene in individual.get("trading")]
         for mod_idx, model in db_indivs.iterrows():
             fits = True
             qt = db_results[mod_idx]
@@ -43,8 +52,6 @@ class Evaluation:
             model_time, model_number = qt.time, qt.model_number
             open_ord_cond_shift = -spread if direction else 0  # (-spread) if buy, (0) otherwise
             close_ord_cond_shift = 0 if direction else -spread  # (0) if buy, (-spread) otherwise
-            entry_dist, stop, stop_out, take, bu, bu_cond, min_dist_betw_orders, max_stops, exp, min_tim_betw_odrs = \
-                [gene.value() for gene in individual.get("trading")]
 
             is_pending = True
             is_opened = False
@@ -90,9 +97,10 @@ class Evaluation:
                     # print('another model is to close to the open one')
 
             for gene_idx, attr in enumerate(model):
-                if (individual[gene_idx].type is bool and attr != individual[gene_idx]) or \
-                    (individual[gene_idx].type is not bool and
-                    (attr < individual[gene_idx].range_start() or attr > individual[gene_idx].range_end())):
+                ind = individual[gene_idx]
+                if (ind.type is bool and attr != ind) or \
+                    (ind.type is not bool and
+                    (attr < ind.value() - ind.radius() or attr > ind.value() + ind.radius())):
                     fits = False
                     break
 
@@ -154,12 +162,9 @@ class Evaluation:
                 recently_opened_models.get(timeout=1)
             recently_opened_models.put(model_number)
 
-        # print('exited evaluation.evaluate')
-        individual.score = result
-        individual.models = models
-        individual.max_drawdown = max_drawdown
-        individual.max_account = max_account_value
-        return result
+        fitness = FitnessResult(result, models, max_drawdown, max_account_value)
+        individual.fitness = fitness
+        return fitness
 
 
 def evaluate(individual, db_indivs, db_results, spread):
@@ -167,6 +172,7 @@ def evaluate(individual, db_indivs, db_results, spread):
     :param db_indivs: pandas object with the list of historical individuals
     :param db_results: pandas object with 'Quotes' objects should be in global scope
     """
+    raise Exception("OLD VERSION !!! you need to update evaluate function")
     result = 0
     # setting parameters
     open_models = []  # list with OpenModel objects
@@ -222,8 +228,8 @@ def evaluate(individual, db_indivs, db_results, spread):
 
         for gene_idx, attr in enumerate(model):
             if (individual[gene_idx].type is bool and attr != individual[gene_idx]) or \
-                    (individual[gene_idx].type is not bool and
-                     (attr < individual[gene_idx].range_start() or attr > individual[gene_idx].range_end())):
+               (individual[gene_idx].type is not bool and
+               (attr < individual[gene_idx].range_start() or attr > individual[gene_idx].range_end())):
                 fits = False
                 break
         if not fits:

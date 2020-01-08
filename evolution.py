@@ -1,133 +1,144 @@
-from time import time
-from copy import deepcopy
-from gene import GeneChain
-from selector import Selector, TournamentSelector
-from crosser import Crosser
-from Effects import Effects
-from fitness import Evaluation, evaluate
-from mutator import Mutator
 import pickle
 import random
 import math
+from multiprocessing import Pool
+from copy import deepcopy
 from time import time
 from datetime import datetime
 
+from gene import GeneChain
+from selector import Selector
+from crosser import Crosser
+from effects import Effects
+from fitness import Evaluation
+from mutator import Mutator
+from util import print_flush
+
 class Evolution:
-    def __init__(self, MAX_GENS: int, POP_SIZE: int, evaluation: Evaluation, base_gene_chain: GeneChain,
-                 crosser: Crosser, mutator: Mutator, effects: Effects, start_indiv_min_fitness=None,
-                 verbose: bool = True):
+    def __init__(self, MAX_GENS: int, evaluation: Evaluation, base_indiv: GeneChain,
+                 crosser: Crosser, mutator: Mutator=None, selector: Selector=None, effects: list=[],
+                 verbose: bool=True):
         self.best_fitness = -math.inf
-        self._base_gen_chain = base_gene_chain
+        self._base_indiv = base_indiv
         self._evaluation = Evaluation(spread=0.0001)
         self._crosser = crosser
         self._mutator = mutator
         self._effects = effects
-        self._max_generations = MAX_GENS
+        self._selector = selector
+        self._max_gens = MAX_GENS
         self._verbose = verbose
 
-        # Create random individuals
-        # self.print_generation(message="Start generation fitnesses:")
+    def init_random_indivs(self, size, min_fitness=-math.inf, min_models=-math.inf, MAX_TRIES = 1000):
+        start_time = time()
+        self._individuals = [deepcopy(self._base_indiv) for i in range(size)]
+        count = 0
+        for i, indiv in enumerate(self._individuals):
+            indiv.set_random()
 
+            if min_fitness != -math.inf or min_models != -math.inf:
+                idx = 1
+                count += 1
+                self._evaluation.evaluate(indiv)
+                while indiv.fitness.score < min_fitness or indiv.fitness.models < min_models:
+                    print_flush("Found {} indivs with {} tries (fitness={}, models={})".format(i, count, indiv.fitness.score, indiv.fitness.models))
+                    if idx > MAX_TRIES:
+                        raise AttributeError("Failed to generate random individual with min fitness {} and min models {}. {} times"
+                            .format(min_fitness, min_models, MAX_TRIES))
 
-        # print('creating start individuals...')
+                    indiv.set_random()
+                    self._evaluation.evaluate(indiv)
+                    idx += 1
+                    count += 1
+                print_flush("Found {} indivs with {} tries ({}s.)".format(i+1, count, round(time() - start_time)))
+
+    def load_indivs(self, filename, size=None):
         precomp_indivs = []
-        with open('valid_indivs.pkl', 'rb') as file:
+        with open(filename, 'rb') as file:
             precomp_indivs = pickle.load(file)
             self._individuals = precomp_indivs
-            self._individuals = TournamentSelector(precomp_indivs, POP_SIZE, len(precomp_indivs) / 15)
+            if size is not None:
+                self._individuals = self._individuals[:size]
             self._sort_indivs()
-
-        # self._individuals = list(random.choice(precomp_indivs) for idx in range(POP_SIZE))
-        # self._individuals = [self.init_indiv(min_models=100) for i in range(POP_SIZE)]
-        # self.dump_indivs()
-
-        # self._sort_indivs()
-        self.print_generation("Initial generation")
-
-
-    def _next_generation(self):
-        # self._sort_indivs()
-        # prev_gen = deepcopy(self._individuals)
-        # cross individ
-        self._individuals = self._crosser.cross(self._individuals)
-        # add mutatation
-        self._compute_fitness_and_sort()
-        self._individuals = self._mutator.mutate(self._individuals)
-        # perform last computations
-        self._compute_fitness_and_sort()
-        # self.print_generation_fitnesses(message="generation fitnesses after crosser and mutator:")
-        # self._individuals = self._effects.effect(prev_gen, self._individuals)
-        # self._sort_indivs()
-        # self.print_generation_fitnesses(message="generation fitnesses after effects:")
-        self.dump_best_indiv()
-
-    def test(self):
-        print('start time =', datetime.now())
-        while True:
-            indiv = self.init_indiv()
-            self._evaluation.evaluate(indiv)
-            if indiv.models >= 100:
-                self.print_indiv(indiv)
-
-        self._sort_indivs()
-        self.dump_indivs()
 
     def run(self):
         start_time = time()
 
-        for i in range(self._max_generations):
+        for i in range(self._max_gens):
+            gen_time = time()
             self._next_generation()
             if self._verbose:
-                print("Generation:", i + 1, "| Best fitness:", round(self._individuals[0].score),
-                      "Models:", self._individuals[0].models, "(%ss.)" % round(time() - start_time))
-                self.print_generation("Fitnesses:")
-                start_time = time()
+                print_flush("Generation: {} | Best fitness: {} | Models: {} | Time: avg per gen = {}s. total = {}s.)"
+                    .format(i+1, round(self._individuals[0].fitness.score), self._individuals[0].fitness.models, round(time() - gen_time), round(time() - start_time)))
+                gen_time = time()
+
+    def _next_generation(self):
+        prev_gen = deepcopy(self._individuals)
+        size = len(self._individuals)
+
+        # cross individ
+        self._individuals = self._crosser.cross(self._individuals)
+
+        # add mutatation
+        if self._mutator is not None:
+            self._compute_fitness()
+            self._individuals = self._mutator.mutate(self._individuals)
+
+        # perform last computations
+        for effect in self._effects:
+            self._compute_fitness()
+            effect.effect(self._individuals)
+        
+        # select best individuals
+        self._compute_fitness()
+        if self._selector is not None:
+            self._individuals = self._selector.select(self._individuals, size)
+        
+        if len(self._individuals) != size:
+            raise Exception("Population size at start and end of the generation is not equal")
+
+        self.dump_indivs('best_indiv.pkl', best=1)
 
     def best(self):
         return self._individuals[0]
 
+    def _compute_fitness(self, sort=True):
+        if self._individuals:
+            
+            #for individ in self._individuals:
+            #    if individ.fitness is None:
+            #        self._evaluation.evaluate(individ)
+            indivs = [individ for individ in self._individuals if individ.fitness is None]
+            pool = Pool(8)
+            results = pool.map(self._evaluation.evaluate, indivs)
+            pool.close()
+            pool.join()
+
+            for i, individ in enumerate(indivs):
+                individ.fitness = results[i]
+
+            if sort:
+                self._sort_indivs()
+
+    def _sort_indivs(self):
+        if self._individuals:
+            self._individuals.sort(key=lambda i: i.fitness.score, reverse=True)
+
+    def dump_indivs(self, filename, best: int=None):
+        if self._individuals:
+            with open(filename, 'wb+') as file:
+                dump = self._individuals
+                if best:
+                    self._sort_indivs()
+                    dump = self._individuals[:best]
+                pickle.dump(dump, file)
+
+    # PRINT
     def print_indiv(self, indiv: GeneChain):
-        print("fitness: " + str(indiv.score) + " models: " + str(indiv.models) + " max account value: " +
-              str(indiv.max_account) + " max drawdown: " + str(indiv.max_drawdown))
+        print("fitness: " + str(indiv.fitness.score) + " models: " + str(indiv.fitness.models) + " max account value: " +
+              str(indiv.fitness.max_account) + " max drawdown: " + str(indiv.fitness.max_drawdown))
 
     def print_generation(self, message=None):
         if message is not None:
             print(message)
         for indiv in self._individuals:
-         self.print_indiv(indiv)
-
-    def init_indiv(self, min_fitness=-math.inf, min_models=-math.inf):
-        # print('generating random gene chain with min fitness =', min_fitness, 'iterations:')
-        indiv = deepcopy(self._base_gen_chain)
-        indiv.set_random()
-        idx = 1
-        if min_fitness != -math.inf or min_models != -math.inf:
-            self._evaluation.evaluate(indiv)
-            while indiv.score < min_fitness or indiv.models < min_models:
-                if idx == 1000:
-                    raise AttributeError("Failed to generate random individual with min fitness " +
-                                         str(min_fitness) + " and min models " + min_models + " 1000 times")
-                indiv.set_random()
-                self._evaluation.evaluate(indiv)
-                idx += 1
-
-        # print('inited indiv')
-        return indiv
-
-    def _compute_fitness_and_sort(self, reverse=True):
-        if self._individuals:
-            for individ in self._individuals:
-                individ.score = self._evaluation.evaluate(individ)
-            self._individuals.sort(key=lambda i: i.score, reverse=reverse)
-
-    def _sort_indivs(self, reverse=True):
-        if self._individuals:
-            self._individuals.sort(key=lambda i: i.score, reverse=reverse)
-
-    def dump_indivs(self):
-        with open('valid_indivs.pkl', 'wb+') as file:
-            pickle.dump(self._individuals, file)
-
-    def dump_best_indiv(self):
-        with open('best_indiv.pkl', 'wb+') as file:
-            pickle.dump(max(self._individuals, key=lambda indiv: indiv.score), file)
+            self.print_indiv(indiv)

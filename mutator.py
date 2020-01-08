@@ -20,8 +20,8 @@ class RandomGeneChainMutator(Mutator):
     def mutate(self, gene_chains: list):
         result = [deepcopy(gene_chains[0]) for i in range(self._n)]
         for gene_chain in result:
-            gene_chain.random()
-        return result
+            gene_chain.set_random()
+        return gene_chains + result
 
 
 class MutRandomIndivs(Mutator):

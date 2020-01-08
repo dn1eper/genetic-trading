@@ -1,4 +1,5 @@
 import random as rand
+import sys
 
 def print_row(row, cell_size = 10):
     row_format = ("|{:>" + str(cell_size) +  "}") * (len(row)) + "|"
@@ -8,7 +9,11 @@ def print_header(header, cell_size = 10):
     print_row(header)
     print(("+"+("-"*cell_size))* (len(header)) + "|")
 
-def floor05(param):
+def print_flush(text):
+    sys.stdout.write("\r" + text + " " * 100)
+    sys.stdout.flush()
+
+def round05(param):
     a = param % 1
     if a < 0.25:
         return int(param)
