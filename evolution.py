@@ -18,7 +18,6 @@ class Evolution:
     def __init__(self, MAX_GENS: int, evaluation: Evaluation, base_indiv: GeneChain,
                  crosser: Crosser, mutator: Mutator=None, selector: Selector=None, effects: list=[],
                  verbose: bool=True):
-        self.best_fitness = -math.inf
         self._base_indiv = base_indiv
         self._evaluation = Evaluation(spread=0.0001)
         self._crosser = crosser
@@ -28,7 +27,10 @@ class Evolution:
         self._max_gens = MAX_GENS
         self._verbose = verbose
 
-    def init_random_indivs(self, size, min_fitness=-math.inf, min_models=-math.inf, MAX_TRIES = 1000):
+        self._start_time = None
+        self._run_results = None
+
+    def init_random_indivs(self, size, min_fitness=-math.inf, min_models=-math.inf, MAX_TRIES=1000):
         start_time = time()
         self._individuals = [deepcopy(self._base_indiv) for i in range(size)]
         count = 0
@@ -61,15 +63,23 @@ class Evolution:
             self._sort_indivs()
 
     def run(self):
-        start_time = time()
+        self._run_results = []
+        self._start_time = time()
 
         for i in range(self._max_gens):
             gen_time = time()
             self._next_generation()
-            if self._verbose:
-                print_flush("Generation: {} | Best fitness: {} | Models: {} | Time: avg per gen = {}s. total = {}s.)"
-                    .format(i+1, round(self._individuals[0].fitness.score), self._individuals[0].fitness.models, round(time() - gen_time), round(time() - start_time)))
-                gen_time = time()
+            self._run_results.append({"fitness": self._individuals[0].fitness, "time": round(time() - gen_time)})
+            self._run_verbose()
+
+    def _run_verbose(self):
+        if self._verbose:
+            print_flush("Generation: {} | Best fitness: {} | Models: {} | Time: avg per gen = {}s. total = {}s.".format(
+                len(self._run_results),
+                round(self._run_results[-1]["fitness"].score), 
+                self._run_results[-1]["fitness"].models, 
+                self._run_results[-1]["time"], 
+                round(time() - self._start_time)))
 
     def _next_generation(self):
         prev_gen = deepcopy(self._individuals)
@@ -101,14 +111,10 @@ class Evolution:
     def best(self):
         return self._individuals[0]
 
-    def _compute_fitness(self, sort=True):
+    def _compute_fitness(self, sort=True, ):
         if self._individuals:
-            
-            #for individ in self._individuals:
-            #    if individ.fitness is None:
-            #        self._evaluation.evaluate(individ)
             indivs = [individ for individ in self._individuals if individ.fitness is None]
-            pool = Pool(8)
+            pool = Pool()
             results = pool.map(self._evaluation.evaluate, indivs)
             pool.close()
             pool.join()

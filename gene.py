@@ -4,7 +4,6 @@ from util import round05
 import numpy as np
 import pandas as pd
 
-
 class Gene:
     """
     One gene of individ with value and radius(for value range)
@@ -20,7 +19,7 @@ class Gene:
         self._value = None
 
         if is_interval:
-            self.min_radius = min_radius
+            self._min_radius = min_radius
         if ordering < 0:
             self.min = round(self.min, -ordering)
             self.max = round(self.max, -ordering)
@@ -51,7 +50,7 @@ class Gene:
             value = self.type(value)
             if self.is_interval:
                 if (self._radius is not None and self.min + self._radius <= value <= self.max - self._radius) or \
-                    (self._radius is None and self.min + self.min_radius <= value <= self.max - self.min_radius):
+                    (self._radius is None and self.min + self._min_radius <= value <= self.max - self._min_radius):
                     self._value = value
             else:
                 if self.max >= value >= self.min:
@@ -74,7 +73,7 @@ class Gene:
             if not self.is_interval:
                 raise ValueError("Seting radius in non-interval Gene")
             if (self._value is not None and self._value - radius >= self.min and self._value + radius <= self.max) or \
-               (self._value is None and radius < self.min_radius):
+               (self._value is None and radius < self._min_radius):
                 self._radius = self.type(radius)
             else:
                 raise ValueError("Wrong Gene radius")
@@ -85,18 +84,18 @@ class Gene:
         """
         if np.issubdtype(self.type, np.integer):
             if self.is_interval:
-                self._value = round05(uniform(self.min + self.min_radius, self.max - self.min_radius))
+                self._value = round05(uniform(self.min + self._min_radius, self.max - self._min_radius))
                 max_radius = min(self._value - self.min, self.max - self._value)
-                radius = round(uniform(self.min_radius, max_radius))
+                radius = round(uniform(self._min_radius, max_radius))
                 self.radius(radius)
             else:
                 self.value(randint(self.min, self.max))
 
         elif np.issubdtype(self.type, np.floating):
             if self.is_interval:
-                self._value = uniform(self.min + self.min_radius, self.max - self.min_radius)
+                self._value = uniform(self.min + self._min_radius, self.max - self._min_radius)
                 max_radius = min(self._value - self.min, self.max - self._value)
-                self.radius(uniform(self.min_radius, max_radius))
+                self.radius(uniform(self._min_radius, max_radius))
             else:
                 self.value(uniform(self.min, self.max))
 
@@ -115,7 +114,6 @@ class Gene:
             return self.value() - self.radius() <= value <= self.value() + self.radius()
         else:
             return self.value() == value
-
 
 class GeneChain:
     """
@@ -153,4 +151,3 @@ class GeneChain:
             if gene.has_tag(tag):
                 genes.append(gene)
         return tuple(genes)
-

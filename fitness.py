@@ -31,7 +31,6 @@ class Evaluation:
         self._spread = spread
 
     def evaluate(self, individual):
-        #print('entered evaluation.evaluate')
         result = 0
         db_indivs = self._def_db_indivs
         db_results = self._def_db_results
@@ -44,27 +43,24 @@ class Evaluation:
         open_models = []  # list with OpenModel objects
         recently_opened_models = Queue(maxsize=10)  # list of model numbers
         entry_dist, stop, stop_out, take, bu, bu_cond, min_dist_betw_orders, max_stops, exp, min_tim_betw_odrs = \
-                [gene.value() for gene in individual.get("trading")]
+            [gene.value() for gene in individual.get("trading")]
         for mod_idx, model in db_indivs.iterrows():
             fits = True
             qt = db_results[mod_idx]
             atr, level, direction, model_number = qt.atr, qt.level, qt.direction, qt.model_number
             model_time, model_number = qt.time, qt.model_number
-            open_ord_cond_shift = -spread if direction else 0  # (-spread) if buy, (0) otherwise
+            open_ord_cond_shift = -spread if direction else 0   # (-spread) if buy, (0) otherwise
             close_ord_cond_shift = 0 if direction else -spread  # (0) if buy, (-spread) otherwise
 
-            is_pending = True
+            #is_pending = True
             is_opened = False
             stops = 0
             placed_bu = False
             have_take = False
             closed_by_bu = False
             time_after_stop = math.inf  # initiates with math.inf to pass (time_after_stop < min_tim_betw_odrs) condition and place first order
-            time_after_order = 0  # time passed after placing an order and before opening it
-            if direction:  # long model
-                # print('level =', level, 'entry_dist =', entry_dist, 'atr =', atr)
-                # print('level =', type(level), 'entry_dist =', type(entry_dist), 'atr =', type(atr))
-
+            time_after_order = 0        # time passed after placing an order and before opening it
+            if direction:               # long model
                 entry_lvl = level + entry_dist * atr
                 bu_lvl = entry_lvl + bu * atr
                 bu_condition_level = entry_lvl + bu_cond * atr
@@ -83,24 +79,18 @@ class Evaluation:
             for open_model in open_models:
                 if model_time >= open_model.close_time:
                     open_models.remove(open_model)
-                    # print("Removed old open model")
 
             # checking if this model should be counted
             for opened_model in list(recently_opened_models.queue):
                 if model_number == opened_model:
                     fits = False
-                    # print('model number is present in recently_opened_models')
 
             for open_model in open_models:
                 if open_model.range_start <= entry_lvl <= open_model.range_end:
                     fits = False
-                    # print('another model is to close to the open one')
 
             for gene_idx, attr in enumerate(model):
-                ind = individual[gene_idx]
-                if (ind.type is bool and attr != ind) or \
-                    (ind.type is not bool and
-                    (attr < ind.value() - ind.radius() or attr > ind.value() + ind.radius())):
+                if individual[gene_idx].include(attr):
                     fits = False
                     break
 
@@ -162,9 +152,7 @@ class Evaluation:
                 recently_opened_models.get(timeout=1)
             recently_opened_models.put(model_number)
 
-        fitness = FitnessResult(result, models, max_drawdown, max_account_value)
-        individual.fitness = fitness
-        return fitness
+        return FitnessResult(result, models, max_drawdown, max_account_value)
 
 
 def evaluate(individual, db_indivs, db_results, spread):
@@ -282,5 +270,3 @@ def evaluate(individual, db_indivs, db_results, spread):
         recently_opened_models.put(model_number)
 
     return result
-
-

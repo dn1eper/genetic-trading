@@ -1,4 +1,5 @@
 import random as rand
+import matplotlib.pyplot as plt
 import sys
 
 def print_row(row, cell_size = 10):
@@ -22,3 +23,11 @@ def round05(param):
     else:
         return int(param) + 0.5
 
+
+def plot(y, y_title=None):
+    plt.plot(range(1, len(y)+1), y, 'b')
+    #plt.title(title)
+    plt.xlabel('Gen')
+    plt.ylabel(y_title)
+    plt.xticks(range(1, len(y)+1))
+    plt.grid(True)
