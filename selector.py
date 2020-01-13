@@ -1,9 +1,7 @@
 from abc import ABC, abstractmethod
 from gene import GeneChain
-from fitness import evaluate, Evaluation
 from copy import deepcopy
 import random
-
 
 class Selector(ABC):
     @abstractmethod

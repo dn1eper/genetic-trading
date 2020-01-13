@@ -1,5 +1,4 @@
 from random import uniform, randint
-from fitness import evaluate
 from util import round05
 import numpy as np
 import pandas as pd
@@ -28,17 +27,10 @@ class Gene:
         return tag in self._tags
 
     def __str__(self):
-        string = ''
-        string += 'gene params:\n'
-        string += 'is interval: {}\nmin = {}, max = {}\n'.format(self.is_interval, self.min, self.max)
-        if self.is_interval and self._value is not None:
-            string += 'center = {}, radius = {}'.format(self.value(), self.radius())
-        elif not self.is_interval and self._value is not None:
-            string += 'value = {}'.format(self._value)
+        if self.is_interval:
+            return str([self.value() - self.radius(), self.value() + self.radius()])
         else:
-            string += 'this gene has no value yet...'
-
-        return string + '\n'
+            return str(self.value())
 
     def value(self, value=None):
         if value is None:
@@ -145,9 +137,9 @@ class GeneChain:
             gene.set_random()
         self.fitness = None
 
-    def get(self, tag):
+    def get(self, tag, has_tag=True):
         genes = []
         for gene in self._genes:
-            if gene.has_tag(tag):
+            if has_tag == gene.has_tag(tag):
                 genes.append(gene)
         return tuple(genes)
