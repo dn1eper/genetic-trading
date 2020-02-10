@@ -15,6 +15,18 @@ def print_flush(text):
     sys.stdout.write("\r" + text + " " * 100)
     sys.stdout.flush()
 
+def date_to_string(time: int):
+    """
+    :param time: time in seconds
+    :return: string datetime in format yyyy.mm.dd hh:mm:ss
+    """
+    sec_in_day = 86400
+    seconds = time % 60
+    minuts = (time % 3600) / 60
+    hours = (time % sec_in_day) / 3600
+
+
+
 def round05(param):
     a = param % 1
     if a < 0.25:

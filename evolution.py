@@ -16,7 +16,7 @@ from util import print_flush
 class Evolution:
     def __init__(self, MAX_GENS: int, fitness: Fitness, base_indiv: GeneChain,
                  crosser: Crosser, mutator: Mutator=None, selector: Selector=None, effects: list=[],
-                 verbose: bool=True):
+                 verbose: bool=True, multithreaded=True):
         self._base_indiv = base_indiv
         self._fitness = fitness
         self._crosser = crosser
@@ -27,13 +27,13 @@ class Evolution:
         self._verbose = verbose
 
         self._gpu = False
-        self._multithread = True
+        self._multithread = multithreaded
 
         self._start_time = None
         self._run_results = None
 
-    def init_random_indivs(self, size, min_fitness=-math.inf, min_models=-math.inf, POOL_SIZE=10):
-        if min_fitness == -math.inf and min_models == -math.inf:
+    def init_random_indivs(self, size, min_fitness=-math.inf, min_models=0, POOL_SIZE=10):
+        if min_fitness == -math.inf and min_models == 0:
             self._individuals = [deepcopy(self._base_indiv) for i in range(size)]
             for indiv in self._individuals:
                 indiv.set_random()
@@ -50,7 +50,7 @@ class Evolution:
                 self._compute_fitness(sort=False)
 
                 for indiv in self._individuals:
-                    if indiv.fitness.score >= min_fitness and indiv.fitness.models >= min_models:
+                    if indiv.fitness.fitness >= min_fitness and indiv.fitness.models >= min_models:
                         indivs.append(indiv)
                 
                 tries += POOL_SIZE
@@ -63,11 +63,10 @@ class Evolution:
             self._individuals = pickle.load(file)
             if size is not None:
                 self._individuals = self._individuals[:size]
-            self._sort_indivs()
 
-    def run(self, dump=None, gpu=False, multithread=True):
+    def run(self, dump=None, gpu=False, multithreaded=True):
         self._gpu = gpu
-        self._multithread = multithread
+        self._multithread = multithreaded
         self._run_results = []
         self._start_time = time()
 
@@ -82,9 +81,10 @@ class Evolution:
 
     def _run_verbose(self):
         if self._verbose:
-            print_flush("Generation: {} | Best fitness: {} | Models: {} | Time: avg per gen = {}s. total = {}s.".format(
+            print_flush("Generation: {} | Best fitness: {} | Best ratio: {} | Models: {} | Time: avg per gen = {}s. total = {}s.".format(
                 len(self._run_results),
-                round(self._run_results[-1]["fitness"].score), 
+                round(self._run_results[-1]["fitness"].fitness),
+                round(self._run_results[-1]["fitness"].ratio),
                 self._run_results[-1]["fitness"].models, 
                 self._run_results[-1]["time"], 
                 round(time() - self._start_time)))
@@ -119,13 +119,13 @@ class Evolution:
 
     def _compute_fitness(self, sort=True):
         if self._individuals:
-            self._fitness.calc([ indiv for indiv in self._individuals if indiv.fitness is None ], gpu=self._gpu, multithread=self._multithread)
+            self._fitness.calc([ indiv for indiv in self._individuals if indiv.fitness is None ], gpu=self._gpu, multithreaded=self._multithread)
             if sort:
                 self._sort_indivs()
 
     def _sort_indivs(self):
         if self._individuals:
-            self._individuals.sort(key=lambda i: i.fitness.score, reverse=True)
+            self._individuals.sort(key=lambda i: i.fitness.fitness, reverse=True)
 
     def dump(self, filename, best: int=None):
         if self._individuals:

@@ -28,7 +28,8 @@ class Gene:
 
     def __str__(self):
         if self.is_interval:
-            return str([self.value() - self.radius(), self.value() + self.radius()])
+            # return str([self.value() - self.radius(), self.value() + self.radius()])
+            return str(self.value() - self.radius()) + ", " + str(self.value() + self.radius())
         else:
             return str(self.value())
 
