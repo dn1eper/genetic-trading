@@ -13,7 +13,7 @@ from multiprocessing import Pool
 REPORT_FILE_NAME = "trading_report.csv"
 
 Quote = namedtuple("Quote", ["model_number", "model_time", "level_time", "level", "atr", "direction", "highs", "lows",
-                             "time", "time_string"])
+                             "time"])
 Model = namedtuple("Model", ["range_start", "range_end", "close_time", "model_line"])
 
 
@@ -31,7 +31,6 @@ class Fitness:
         self.digits, self.spread = load_symbol_properties()
         self.db_results = []
         quotes_time = list(list(int(time) for time in quotes) for quotes in load_quotes_time())
-        quotes_time_string = load_quotes_time_string()
 
         for idx, result in enumerate(load_results()):
             quotes = np.array([float(quote) for quote in result[6:]])
@@ -46,7 +45,6 @@ class Fitness:
                 quotes[:int(len(quotes) / 2)],
                 quotes[int(len(quotes) / 2):],
                 quotes_time[idx],
-                quotes_time_string[idx]
             ))
 
         # self.db_results = np.array(self.db_results)
