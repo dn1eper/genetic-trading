@@ -16,7 +16,7 @@ from util import print_flush
 class Evolution:
     def __init__(self, MAX_GENS: int, fitness: Fitness, base_indiv: GeneChain,
                  crosser: Crosser, mutator: Mutator=None, selector: Selector=None, effects: list=[],
-                 verbose: bool=True, multithreaded=True):
+                 verbose: bool=True):
         self._base_indiv = base_indiv
         self._fitness = fitness
         self._crosser = crosser
@@ -27,12 +27,13 @@ class Evolution:
         self._verbose = verbose
 
         self._gpu = False
-        self._multithread = multithreaded
+        self._multithread = False
+        self._compile = True
 
         self._start_time = None
         self._run_results = None
 
-    def init_random_indivs(self, size, min_fitness=-math.inf, min_models=0, POOL_SIZE=10):
+    def init_random_indivs(self, size, min_fitness=-math.inf, min_models=0, POOL_SIZE=100):
         if min_fitness == -math.inf and min_models == 0:
             self._individuals = [deepcopy(self._base_indiv) for i in range(size)]
             for indiv in self._individuals:
@@ -51,7 +52,7 @@ class Evolution:
 
                 for indiv in self._individuals:
                     if indiv.fitness.fitness >= min_fitness and indiv.fitness.models >= min_models:
-                        indivs.append(indiv)
+                        indivs.append(deepcopy(indiv))
                 
                 tries += POOL_SIZE
                 print_flush("Found {} indivs with {} tries ({}s.)".format(len(indivs), tries, round(time() - self._start_time)))
@@ -64,8 +65,9 @@ class Evolution:
             if size is not None:
                 self._individuals = self._individuals[:size]
 
-    def run(self, dump=None, gpu=False, multithreaded=True):
+    def run(self, dump=None, compile=True, gpu=False, multithreaded=False):
         self._gpu = gpu
+        self._compile = compile
         self._multithread = multithreaded
         self._run_results = []
         self._start_time = time()
@@ -119,7 +121,7 @@ class Evolution:
 
     def _compute_fitness(self, sort=True):
         if self._individuals:
-            self._fitness.calc([ indiv for indiv in self._individuals if indiv.fitness is None ], gpu=self._gpu, multithreaded=self._multithread)
+            self._fitness.calc([ indiv for indiv in self._individuals if indiv.fitness is None ], gpu=self._gpu, multithreaded=self._multithread, compile=self._compile)
             if sort:
                 self._sort_indivs()
 
